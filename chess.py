@@ -58,13 +58,14 @@ class Board:
                 row.append(Square(position, color, self.window))
 
         # Iterate over board array and initialize world positions and pieces
-        for rank in self.board:
-            for square in rank:
+        for i in range(len(self.board)):
+            for j in range(len(self.board[0])):
+                square = self.board[i][j]
+
                 # Initialize world position of each square for rendering
-                for i in range(len(self.board)):
-                    for j in range(len(self.board[0])):
-                        self.board[i][j].set_world_position(j * self.square_width, self.window_size[1] -
-                                                            (i * self.square_height) - self.square_height)
+                square.set_world_position(j * self.square_width, self.window_size[1] -
+                                                    ((i+1) * self.square_height))
+                square.set_area() # Initialize area variable of square
 
                 # Initialize starting game position of pieces
                 if square.get_position() == 'a8' or square.get_position() == 'h8':
@@ -106,8 +107,12 @@ class Board:
     def render(self):
         for i in range(len(self.board)):
             for j in range(len(self.board[0])):
+                current_square = self.board[i][j]
 
-                self.board[i][j].render()
+                current_square.render()
+
+
+
                 #
                 # if self.click_pos is not None:
                 #     if (new_square_area[0] < self.click_pos[0] < new_square_area[2] and
@@ -151,19 +156,24 @@ class Board:
                                 possible_moves.remove(square)
                         self.board[i][j].set_possible_moves(possible_moves)
 
-    def set_click_pos(self, x, y):
-        self.click_pos = (x, y)
-        print("Click pos:", self.click_pos)
-
     def set_move_pos(self, x, y):
         self.move_pos = (x, y)
         print("Move pos:", self.move_pos)
+
+    def click(self, x, y):
+        self.click_pos = (x, y)
+        for i in range(len(self.board)):
+            for j in range(len(self.board[i])):
+                current_square = self.board[i][j]
+                if current_square.is_clicked(self.click_pos):
+                    print(current_square.get_position(), "clicked")
 
 
 class Square:
     def __init__(self, position, color, window):
         self.position = position        # Position on board
         self.world_position = None      # Coordinates for rendering to screen
+        self.area = None
         self.piece = None               # Piece object on square
         self.color = color              # Color of square
         self.possible_moves = []        # List of squares which could be moved to from a given square based on piece
@@ -173,21 +183,21 @@ class Square:
         self.square_width = self.window_size[0] / 8
         self.square_height = self.window_size[1] / 8
 
+    def set_world_position(self, x, y):
+        self.world_position = (x, y)
+
+    def set_area(self):
         # Four world-coordinates representing area of square
-        if self.world_position is not None:
-            self.area = [self.world_position[0],                      # x1
-                         self.world_position[1],                      # y1
-                         self.world_position[1] + self.square_width,  # x2
-                         self.window_size[1] + self.square_height]    # y2
+        self.area = [self.world_position[0],                       # x1
+                     self.world_position[1],                       # y1
+                     self.world_position[0] + self.square_width,   # x2
+                     self.world_position[1] + self.square_height]  # y2
 
     def get_color(self):
         return self.color
 
     def get_position(self):
         return self.position
-
-    def set_world_position(self, x, y):
-        self.world_position = (x, y)
 
     def get_piece(self):
         return self.piece
@@ -223,6 +233,13 @@ class Square:
             piece_sprite.scale = scale_factor
 
             piece_sprite.draw()
+
+    def is_clicked(self, click_pos):
+        if (self.area[0] < click_pos[0] < self.area[2] and
+                self.area[1] < click_pos[1] < self.area[3]):
+            return True
+        else:
+            return False
 
 
 class Piece:

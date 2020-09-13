@@ -18,7 +18,7 @@ if __name__ == "__main__":
     @window.event
     def on_mouse_press(x, y, button, modifiers):
         if button == 1:
-            board.set_click_pos(x, y)
+            board.click(x, y)
 
     pyglet.app.run()
 
