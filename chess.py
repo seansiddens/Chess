@@ -1,40 +1,28 @@
 import pyglet
 from pyglet import shapes
 
-black = 1
-white = 0
+
+BLACK = 1
+WHITE = 0
 
 
 class Board:
     def __init__(self, window):
-        self.window = window
-        self.window_size = self.window.get_size()
+        self.window = window                       # Pyglet window used for rendering
+        self.window_size = self.window.get_size()  # Width and height of game window in pixels
         self.files = "abcdefgh"
         self.board = []
-        self.click_pos = None
-        self.move_pos = None
+        self.click_pos = None         # X and Y position of last click
         self.square_clicked = None
+        self.square_moved = None
 
-        color = white
-        for rank in reversed(range(1, 9)):
-            row = []
-            self.board.append(row)
-            for file in range(1, 9):
-                if file > 1:
-                    if color == white:
-                        color = black
-                    else:
-                        color = white
-                else:
-                    if color == white:
-                        color = white
-                    else:
-                        color = black
-                position = self.files[file - 1] + str(rank)
-                row.append(Square(position, color))
+        # Width and height of board squares in pixels
+        self.square_width = self.window_size[0] / 8
+        self.square_height = self.window_size[1] / 8
 
         self.init_board()
 
+    # Prints board state to terminal
     def print_board(self):
         print('-----------------------------------------------------------')
         for rank in self.board:
@@ -46,109 +34,108 @@ class Board:
             print('')
         print('-----------------------------------------------------------')
 
+    # Sets up the board by assigning squares with pieces
+    # Also sets world position of each square for rendering
     def init_board(self):
+        # Create a 2D Array of Square objects, setting their proper color
+        color = WHITE
+        for rank in reversed(range(1, 9)):
+            row = []
+            self.board.append(row)
+            for file in range(1, 9):
+                # Assigns colors to make checkerboard appearance
+                if file > 1:
+                    if color == WHITE:
+                        color = BLACK
+                    else:
+                        color = WHITE
+                else:
+                    if color == WHITE:
+                        color = WHITE
+                    else:
+                        color = BLACK
+                position = self.files[file - 1] + str(rank)  # Assigns board's positional notation
+                row.append(Square(position, color, self.window))
+
+        # Iterate over board array and initialize world positions and pieces
         for rank in self.board:
             for square in rank:
+                # Initialize world position of each square for rendering
+                for i in range(len(self.board)):
+                    for j in range(len(self.board[0])):
+                        self.board[i][j].set_world_position(j * self.square_width, self.window_size[1] -
+                                                            (i * self.square_height) - self.square_height)
+
+                # Initialize starting game position of pieces
                 if square.get_position() == 'a8' or square.get_position() == 'h8':
-                    square.set_piece(Piece('R', black))
+                    square.set_piece(Piece('R', BLACK))
                 elif square.get_position() == 'b8' or square.get_position() == 'g8':
-                    square.set_piece(Piece('N', black))
+                    square.set_piece(Piece('N', BLACK))
                 elif square.get_position() == 'c8' or square.get_position() == 'f8':
-                    square.set_piece(Piece('B', black))
+                    square.set_piece(Piece('B', BLACK))
                 elif square.get_position() == 'd8':
-                    square.set_piece(Piece('Q', black))
+                    square.set_piece(Piece('Q', BLACK))
                 elif square.get_position() == 'e8':
-                    square.set_piece(Piece('K', black))
+                    square.set_piece(Piece('K', BLACK))
                 elif square.get_position()[1] == '7':
-                    square.set_piece(Piece('P', black))
+                    square.set_piece(Piece('P', BLACK))
                 elif square.get_position() == 'a1' or square.get_position() == 'h1':
-                    square.set_piece(Piece('R', black))
+                    square.set_piece(Piece('R', WHITE))
                 elif square.get_position() == 'b1' or square.get_position() == 'g1':
-                    square.set_piece(Piece('N', black))
+                    square.set_piece(Piece('N', WHITE))
                 elif square.get_position() == 'c1' or square.get_position() == 'f1':
-                    square.set_piece(Piece('B', black))
+                    square.set_piece(Piece('B', WHITE))
                 elif square.get_position() == 'd1':
-                    square.set_piece(Piece('Q', black))
+                    square.set_piece(Piece('Q', WHITE))
                 elif square.get_position() == 'e1':
-                    square.set_piece(Piece('K', black))
+                    square.set_piece(Piece('K', WHITE))
                 elif square.get_position()[1] == '2':
-                    square.set_piece(Piece('P', black))
-        self.print_board()
+                    square.set_piece(Piece('P', WHITE))
         self.update_move_lists()
 
     def move_piece(self, position, move):
-        position_rank = int(position[1])
-        position_file = self.files.index(position[0])
-        move_rank = int(move[1])
-        move_file = self.files.index(move[0])
-        piece = self.board[position_rank][position_file].get_piece()
-        self.board[position_rank][position_file].set_piece(None)
-        self.board[move_rank][move_file].set_piece(piece)
+        position_rank_index = 8 - int(position[1])
+        position_file_index = self.files.index(position[0])
+        move_rank_index = 8 - int(move[1])
+        move_file_index = self.files.index(move[0])
+        piece = self.board[position_rank_index][position_file_index].get_piece()
+        self.board[position_rank_index][position_file_index].set_piece(None)
+        self.board[move_rank_index][move_file_index].set_piece(piece)
         self.print_board()
 
     def render(self):
-        square_width = self.window_size[0] / 8
-        square_height = self.window_size[1] / 8
         for i in range(len(self.board)):
             for j in range(len(self.board[0])):
-                if self.board[i][j].get_color() == white:
-                    square_color = (255, 255, 255)
-                else:
-                    square_color = (51, 204, 255)
 
-                new_square_area = [j * square_width,
-                                   self.window_size[1] - (i * square_height) - square_height,
-                                   (j * square_width) + square_width,
-                                   self.window_size[1] - (i * square_height) - square_height + square_height]
-
-
-                new_square = shapes.Rectangle(x=new_square_area[0],
-                                              y=new_square_area[1],
-                                              width=square_width, height=square_height,
-                                              color=square_color)
-                new_square.draw()
-
-                if self.click_pos is not None:
-                    if (new_square_area[0] < self.click_pos[0] < new_square_area[2] and
-                            new_square_area[1] < self.click_pos[1] < new_square_area[3]):
-                        print(self.board[i][j].get_position())
-                        self.square_clicked = self.board[i][j].get_position()
-
-                        new_bounding_box = shapes.Rectangle(x=new_square_area[0],
-                                                            y=new_square_area[1],
-                                                            width=square_width, height=square_height,
-                                                            color=(255, 0, 0))
-                        new_bounding_box.opacity = 255
-                        new_bounding_box.draw()
-
-                if self.move_pos is not None:
-                    if (new_square_area[0] < self.move_pos[0] < new_square_area[2] and
-                            new_square_area[1] < self.move_pos[1] < new_square_area[3]):
-                        print(self.board[i][j].get_position())
-
-                        self.move_piece(self.square_clicked, self.board[i][j].get_position())
-
-                        new_bounding_box = shapes.Rectangle(x=new_square_area[0],
-                                                            y=new_square_area[1],
-                                                            width=square_width, height=square_height,
-                                                            color=(255, 0, 0))
-                        new_bounding_box.opacity = 255
-                        new_bounding_box.draw()
-
-                if self.board[i][j].piece is None:
-                    continue
-                else:
-                    if self.board[i][j].piece.sprite is None:
-                        continue
-                    else:
-                        square_piece = self.board[i][j].get_piece()
-                        new_sprite = pyglet.sprite.Sprite(square_piece.get_sprite(),
-                                                          x=j * square_width,
-                                                          y=self.window_size[1] - (i * square_height) - square_height)
-                        scale_factor = square_width / new_sprite.width
-                        new_sprite.scale = scale_factor
-
-                        new_sprite.draw()
+                self.board[i][j].render()
+                #
+                # if self.click_pos is not None:
+                #     if (new_square_area[0] < self.click_pos[0] < new_square_area[2] and
+                #             new_square_area[1] < self.click_pos[1] < new_square_area[3]):
+                #         self.square_clicked = self.board[i][j].get_position()
+                #         print(self.square_clicked)
+                #
+                #         new_bounding_box = shapes.Rectangle(x=new_square_area[0],
+                #                                             y=new_square_area[1],
+                #                                             width=square_width, height=square_height,
+                #                                             color=(255, 0, 0))
+                #         new_bounding_box.opacity = 255
+                #         new_bounding_box.draw()
+                #
+                # if self.move_pos is not None:
+                #     if (new_square_area[0] < self.move_pos[0] < new_square_area[2] and
+                #             new_square_area[1] < self.move_pos[1] < new_square_area[3]):
+                #         self.square_moved = self.board[i][j].get_position()
+                #         print(self.square_moved)
+                #
+                #         self.move_piece(self.square_clicked, self.board[i][j].get_position())
+                #
+                #         new_bounding_box = shapes.Rectangle(x=new_square_area[0],
+                #                                             y=new_square_area[1],
+                #                                             width=square_width, height=square_height,
+                #                                             color=(255, 0, 0))
+                #         new_bounding_box.opacity = 255
+                #         new_bounding_box.draw()
 
     def get_file(self, num):
         return [row[num] for row in self.board]
@@ -166,23 +153,41 @@ class Board:
 
     def set_click_pos(self, x, y):
         self.click_pos = (x, y)
+        print("Click pos:", self.click_pos)
 
     def set_move_pos(self, x, y):
         self.move_pos = (x, y)
+        print("Move pos:", self.move_pos)
 
 
 class Square:
-    def __init__(self, position, color):
-        self.position = position
-        self.piece = None
-        self.color = color
-        self.possible_moves = []
+    def __init__(self, position, color, window):
+        self.position = position        # Position on board
+        self.world_position = None      # Coordinates for rendering to screen
+        self.piece = None               # Piece object on square
+        self.color = color              # Color of square
+        self.possible_moves = []        # List of squares which could be moved to from a given square based on piece
+
+        self.window = window
+        self.window_size = self.window.get_size()
+        self.square_width = self.window_size[0] / 8
+        self.square_height = self.window_size[1] / 8
+
+        # Four world-coordinates representing area of square
+        if self.world_position is not None:
+            self.area = [self.world_position[0],                      # x1
+                         self.world_position[1],                      # y1
+                         self.world_position[1] + self.square_width,  # x2
+                         self.window_size[1] + self.square_height]    # y2
 
     def get_color(self):
         return self.color
 
     def get_position(self):
         return self.position
+
+    def set_world_position(self, x, y):
+        self.world_position = (x, y)
 
     def get_piece(self):
         return self.piece
@@ -196,6 +201,29 @@ class Square:
     def get_piece_type(self):
         return self.piece.piece_type
 
+    # Draws square to screen using world position, also renders piece sprite if applicable
+    def render(self):
+        # --- Square rendering ---
+        if self.color == WHITE:
+            square_color = (255, 255, 255)  # Display color for white squares
+        else:
+            square_color = (51, 204, 255)  # Display color for black squares
+
+        rendered_square = shapes.Rectangle(self.world_position[0], self.world_position[1],
+                                           width=self.square_width, height=self.square_height,
+                                           color=square_color)
+        rendered_square.draw()
+
+        # --- Piece rendering ---
+        if self.piece is not None:
+            piece_sprite = pyglet.sprite.Sprite(self.piece.get_sprite(),
+                                                x=self.world_position[0],
+                                                y=self.world_position[1])
+            scale_factor = self.square_width / piece_sprite.width
+            piece_sprite.scale = scale_factor
+
+            piece_sprite.draw()
+
 
 class Piece:
     def __init__(self, piece_type, color):
@@ -203,29 +231,29 @@ class Piece:
         self.color = color
 
         # Load sprites
-        if self.piece_type == 'K' and self.color == white:
+        if self.piece_type == 'K' and self.color == WHITE:
             self.sprite = pyglet.image.load('pieces/white-king.png')
-        elif self.piece_type == 'K' and self.color == black:
+        elif self.piece_type == 'K' and self.color == BLACK:
             self.sprite = pyglet.image.load('pieces/black-king.png')
-        elif self.piece_type == 'Q' and self.color == white:
+        elif self.piece_type == 'Q' and self.color == WHITE:
             self.sprite = pyglet.image.load('pieces/white-queen.png')
-        elif self.piece_type == 'Q' and self.color == black:
+        elif self.piece_type == 'Q' and self.color == BLACK:
             self.sprite = pyglet.image.load('pieces/black-queen.png')
-        elif self.piece_type == 'R' and self.color == white:
+        elif self.piece_type == 'R' and self.color == WHITE:
             self.sprite = pyglet.image.load('pieces/white-rook.png')
-        elif self.piece_type == 'R' and self.color == black:
+        elif self.piece_type == 'R' and self.color == BLACK:
             self.sprite = pyglet.image.load('pieces/black-rook.png')
-        elif self.piece_type == 'B' and self.color == white:
+        elif self.piece_type == 'B' and self.color == WHITE:
             self.sprite = pyglet.image.load('pieces/white-bishop.png')
-        elif self.piece_type == 'B' and self.color == black:
+        elif self.piece_type == 'B' and self.color == BLACK:
             self.sprite = pyglet.image.load('pieces/black-bishop.png')
-        elif self.piece_type == 'N' and self.color == white:
+        elif self.piece_type == 'N' and self.color == WHITE:
             self.sprite = pyglet.image.load('pieces/white-knight.png')
-        elif self.piece_type == 'N' and self.color == black:
+        elif self.piece_type == 'N' and self.color == BLACK:
             self.sprite = pyglet.image.load('pieces/black-knight.png')
-        elif self.piece_type == 'P' and self.color == white:
+        elif self.piece_type == 'P' and self.color == WHITE:
             self.sprite = pyglet.image.load('pieces/white-pawn.png')
-        elif self.piece_type == 'P' and self.color == black:
+        elif self.piece_type == 'P' and self.color == BLACK:
             self.sprite = pyglet.image.load('pieces/black-pawn.png')
 
     def get_piece_type(self):
