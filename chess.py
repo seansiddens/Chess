@@ -13,8 +13,7 @@ class Board:
         self.files = "abcdefgh"
         self.board = []
         self.click_pos = None         # X and Y position of last click
-        self.square_clicked = None
-        self.square_moved = None
+        self.last_square_selected = None
 
         # Width and height of board squares in pixels
         self.square_width = self.window_size[0] / 8
@@ -63,9 +62,9 @@ class Board:
                 square = self.board[i][j]
 
                 # Initialize world position of each square for rendering
-                square.set_world_position(j * self.square_width, self.window_size[1] -
-                                                    ((i+1) * self.square_height))
-                square.set_area() # Initialize area variable of square
+                square.set_world_position(j * self.square_width,
+                                          self.window_size[1] - ((i+1) * self.square_height))
+                square.set_area()  # Initialize area variable of square
 
                 # Initialize starting game position of pieces
                 if square.get_position() == 'a8' or square.get_position() == 'h8':
@@ -94,53 +93,17 @@ class Board:
                     square.set_piece(Piece('P', WHITE))
         self.update_move_lists()
 
-    def move_piece(self, position, move):
-        position_rank_index = 8 - int(position[1])
-        position_file_index = self.files.index(position[0])
-        move_rank_index = 8 - int(move[1])
-        move_file_index = self.files.index(move[0])
-        piece = self.board[position_rank_index][position_file_index].get_piece()
-        self.board[position_rank_index][position_file_index].set_piece(None)
-        self.board[move_rank_index][move_file_index].set_piece(piece)
-        self.print_board()
+    # Moves game piece from one square to another
+    def move_piece(self, start_square, end_square):
+        piece = start_square.get_piece()
+        start_square.set_piece(None)
+        end_square.set_piece(piece)
 
     def render(self):
         for i in range(len(self.board)):
             for j in range(len(self.board[0])):
                 current_square = self.board[i][j]
-
                 current_square.render()
-
-
-
-                #
-                # if self.click_pos is not None:
-                #     if (new_square_area[0] < self.click_pos[0] < new_square_area[2] and
-                #             new_square_area[1] < self.click_pos[1] < new_square_area[3]):
-                #         self.square_clicked = self.board[i][j].get_position()
-                #         print(self.square_clicked)
-                #
-                #         new_bounding_box = shapes.Rectangle(x=new_square_area[0],
-                #                                             y=new_square_area[1],
-                #                                             width=square_width, height=square_height,
-                #                                             color=(255, 0, 0))
-                #         new_bounding_box.opacity = 255
-                #         new_bounding_box.draw()
-                #
-                # if self.move_pos is not None:
-                #     if (new_square_area[0] < self.move_pos[0] < new_square_area[2] and
-                #             new_square_area[1] < self.move_pos[1] < new_square_area[3]):
-                #         self.square_moved = self.board[i][j].get_position()
-                #         print(self.square_moved)
-                #
-                #         self.move_piece(self.square_clicked, self.board[i][j].get_position())
-                #
-                #         new_bounding_box = shapes.Rectangle(x=new_square_area[0],
-                #                                             y=new_square_area[1],
-                #                                             width=square_width, height=square_height,
-                #                                             color=(255, 0, 0))
-                #         new_bounding_box.opacity = 255
-                #         new_bounding_box.draw()
 
     def get_file(self, num):
         return [row[num] for row in self.board]
@@ -156,17 +119,29 @@ class Board:
                                 possible_moves.remove(square)
                         self.board[i][j].set_possible_moves(possible_moves)
 
-    def set_move_pos(self, x, y):
-        self.move_pos = (x, y)
-        print("Move pos:", self.move_pos)
-
     def click(self, x, y):
         self.click_pos = (x, y)
         for i in range(len(self.board)):
             for j in range(len(self.board[i])):
                 current_square = self.board[i][j]
                 if current_square.is_clicked(self.click_pos):
-                    print(current_square.get_position(), "clicked")
+                    print(current_square.position)
+
+                    # First click onto square with piece
+                    if current_square.piece and self.last_square_selected is None:
+                        current_square.is_selected = True
+                        self.last_square_selected = current_square
+
+                    # Second click if a square with piece is already selected
+                    elif self.last_square_selected is not None:
+                        # Move piece to new square
+                        self.move_piece(self.last_square_selected, current_square)
+
+                        # De-select squares
+                        self.last_square_selected.is_selected = False
+                        current_square.is_selected = False
+
+                        self.last_square_selected = None
 
 
 class Square:
@@ -177,6 +152,7 @@ class Square:
         self.piece = None               # Piece object on square
         self.color = color              # Color of square
         self.possible_moves = []        # List of squares which could be moved to from a given square based on piece
+        self.is_selected = False
 
         self.window = window
         self.window_size = self.window.get_size()
@@ -224,6 +200,14 @@ class Square:
                                            color=square_color)
         rendered_square.draw()
 
+        if self.is_selected:
+            highlight_square = shapes.Rectangle(x=self.world_position[0],
+                                                y=self.world_position[1],
+                                                width=self.square_width, height=self.square_height,
+                                                color=(255, 0, 0))
+            highlight_square.opacity = 255
+            highlight_square.draw()
+
         # --- Piece rendering ---
         if self.piece is not None:
             piece_sprite = pyglet.sprite.Sprite(self.piece.get_sprite(),
@@ -233,6 +217,8 @@ class Square:
             piece_sprite.scale = scale_factor
 
             piece_sprite.draw()
+
+        # -- Label rendering ---
 
     def is_clicked(self, click_pos):
         if (self.area[0] < click_pos[0] < self.area[2] and
